@@ -1,3 +1,4 @@
+from src.models import RawScrapedPage
 import pytest_asyncio
 import pytest
 
@@ -33,7 +34,7 @@ TEST_DELTALAKE_SILVER = Path(RESOURCES / "test_deltalake/silver")
 
 
 @pytest_asyncio.fixture
-async def main_page_response() -> AsyncGenerator[aiohttp.ClientResponse]:
+async def main_page_response() -> AsyncGenerator[aiohttp.ClientResponse]: # Live requests are unstable and unsuitable for testing. I should instead create a monitoring service that checks whether the scraper works or not.
     async with aiohttp.ClientSession() as session:
         async with session.get(os.getenv("SITEA_START_URL", "Example.com")) as response:
             response.raise_for_status()
@@ -107,3 +108,15 @@ async def test_brz_check_if_file_exists(
     await store.write_batch_of_entries([raw_scraped_page])
 
     assert await store.check_if_entry_exists(raw_scraped_page)
+
+@pytest.mark.asyncio
+async def test_too_many_open_files(
+        raw_scraped_page: models.RawScrapedPage, store: components.Store
+        ):
+
+    many_files: List[RawScrapedPage] = [raw_scraped_page.model_copy() for _ in range(500)]
+
+    await store.write_batch_of_entries(many_files)
+
+    assert True
+

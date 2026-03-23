@@ -45,7 +45,8 @@ class Store:
         dt = DeltaTable(self.config.bronze_metadata_path)
 
         matching_data = dt.to_pyarrow_table(
-            filters=[("file_hash", "=", entry.file_hash)]
+            filters=[("url", "=", entry.url)] 
+            # I dont use hashes since through experimentation I found the page to change automatically every once in a while without the offer changing since recommendations or aggregate statistics change. Instead I plan to implement and update mechanism later on...
         )
 
         return matching_data.num_rows > 0
@@ -79,12 +80,15 @@ class Store:
         pass
 
     async def _write_to_bronze_batch(self, batch: List[RawScrapedPage]):
-        async def write_file(raw_page: RawScrapedPage, metadata: BronzeStorageEntry):
-            full_path = Path(self.config.bronze_path / metadata.file_path)
-            full_path.parent.mkdir(parents=True, exist_ok=True)
+        sem = asyncio.Semaphore(50)
 
-            async with aiofiles.open(full_path, mode="wb") as f:
-                await f.write(raw_page.raw_content)
+        async def write_file(raw_page: RawScrapedPage, metadata: BronzeStorageEntry):
+            async with sem:
+                full_path = Path(self.config.bronze_path / metadata.file_path) 
+                full_path.parent.mkdir(parents=True, exist_ok=True)
+
+                async with aiofiles.open(full_path, mode="wb") as f:
+                    await f.write(raw_page.raw_content)
 
         async def write_metadata_batch(metadata_batch: List[BronzeStorageEntry]):
             df = pd.DataFrame([metadata.model_dump() for metadata in metadata_batch])

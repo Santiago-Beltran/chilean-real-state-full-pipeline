@@ -216,3 +216,5 @@ __marimo__/
 .streamlit/secrets.toml
 
 tests/resources/test_deltalake
+
+data/
