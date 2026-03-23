@@ -1,11 +1,13 @@
 from src.models import RawScrapedPage
 import pytest_asyncio
 import pytest
+from unittest.mock import AsyncMock, MagicMock
 
 from datetime import datetime
 from typing import List, AsyncGenerator, Generator
 
 import aiohttp
+import asyncio
 
 import pandas as pd
 from deltalake import DeltaTable
@@ -15,6 +17,7 @@ from scrapy import responsetypes
 
 from src import components, models
 from src.src_to_brz import src_to_brz
+from src.src_to_brz.src_to_brz import BronzeWriterPipeline
 
 from pathlib import Path
 
@@ -120,3 +123,40 @@ async def test_too_many_open_files(
 
     assert True
 
+
+@pytest.mark.asyncio
+async def test_pipeline_race_condition_fix():
+    pipeline = BronzeWriterPipeline()
+    pipeline.max_pages_in_memory = 10
+    pipeline.pages_in_memory = []  
+    
+    pipeline.store = MagicMock()
+    pipeline.store.check_if_entry_exists = AsyncMock(return_value=False)
+    
+    write_mock = AsyncMock()
+    async def slow_write(*args, **kwargs):
+        await asyncio.sleep(0.1)
+    
+    write_mock.side_effect = slow_write
+    pipeline.store.write_batch_of_entries = write_mock
+
+    items = []
+    for i in range(10):
+        items.append(
+            RawScrapedPage(
+                url=f"https://example.com/{i}",
+                source_system="SiteA",
+                ingestion_ts=datetime.now(),
+                raw_content=b"<html>test</html>"
+            )
+        )
+
+    tasks = [pipeline.process_item(item) for item in items]
+    await asyncio.gather(*tasks)
+
+    assert pipeline.store.write_batch_of_entries.call_count == 1, "Write was called multiple times."
+    
+    written_batch = pipeline.store.write_batch_of_entries.call_args[0][0]
+    assert len(written_batch) == 10
+    
+    assert len(pipeline.pages_in_memory) == 0

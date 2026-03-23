@@ -99,11 +99,14 @@ class BronzeWriterPipeline:
         if await self.store.check_if_entry_exists(item):
             raise DropItem("This offer was already extracted")
 
-        if len(self.pages_in_memory) > self.max_pages_in_memory:
-            await self.store.write_batch_of_entries(self.pages_in_memory)
+        self.pages_in_memory.append(item)
+
+        if len(self.pages_in_memory) >= self.max_pages_in_memory:
+            batch_to_write = self.pages_in_memory
             self.pages_in_memory = []
-        else:
-            self.pages_in_memory.append(item)
+            await self.store.write_batch_of_entries(batch_to_write)
+            
+        return item
 
 
 def run():

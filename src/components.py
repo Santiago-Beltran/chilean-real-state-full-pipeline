@@ -80,7 +80,7 @@ class Store:
         pass
 
     async def _write_to_bronze_batch(self, batch: List[RawScrapedPage]):
-        sem = asyncio.Semaphore(30)
+        sem = asyncio.Semaphore(25)
 
         async def write_file(raw_page: RawScrapedPage, metadata: BronzeStorageEntry):
             async with sem:
