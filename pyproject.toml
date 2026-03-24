@@ -8,6 +8,7 @@ dependencies = [
     "aiofiles>=25.1.0",
     "aiohttp>=3.13.3",
     "bs4>=0.0.2",
+    "delta-spark>=4.1.0",
     "deltalake>=1.5.0",
     "dotenv>=0.9.9",
     "pandas>=3.0.1",

@@ -1,7 +1,9 @@
+from bs4 import BeautifulSoup
+from abc import abstractmethod
 from deltalake import write_deltalake, DeltaTable
 import asyncio
 import aiofiles
-from typing import List
+from typing import List, Dict, Any, Optional, Tuple
 from pathlib import Path
 from functools import singledispatchmethod
 
@@ -11,6 +13,7 @@ import pyarrow as pa
 from src.models import RawScrapedPage, BronzeStorageEntry, SilverStorageEntry
 
 import os
+import re
 
 
 class StoreConfig:
@@ -45,7 +48,7 @@ class Store:
         dt = DeltaTable(self.config.bronze_metadata_path)
 
         matching_data = dt.to_pyarrow_table(
-            filters=[("url", "=", entry.url)] 
+            filters=[("url", "=", entry.url)]
             # I dont use hashes since through experimentation I found the page to change automatically every once in a while without the offer changing since recommendations or aggregate statistics change. Instead I plan to implement and update mechanism later on...
         )
 
@@ -84,7 +87,7 @@ class Store:
 
         async def write_file(raw_page: RawScrapedPage, metadata: BronzeStorageEntry):
             async with sem:
-                full_path = Path(self.config.bronze_path / metadata.file_path) 
+                full_path = Path(self.config.bronze_path / metadata.file_path)
                 full_path.parent.mkdir(parents=True, exist_ok=True)
 
                 async with aiofiles.open(full_path, mode="wb") as f:
@@ -153,3 +156,168 @@ class Store:
                 schema=bronze_metadata_schema,
                 mode="overwrite",
             )
+
+
+class Parser:
+    @staticmethod
+    @abstractmethod
+    def parse(content: str, url: str) -> Optional[SilverStorageEntry]:
+        pass
+
+
+class SiteAParser(Parser):
+    @staticmethod
+    def parse(content: str, url: str) -> Optional[SilverStorageEntry]:
+        soup = BeautifulSoup(content, "html.parser")
+
+        loopa_data_dict: Optional[Dict[str, Any]] = SiteAParser._get_loopa_data_dict(
+            soup
+        )
+        details_dict: Optional[Dict[str, Any]] = SiteAParser._get_details_dict(soup)
+        insights_dict: Optional[Dict[str, Any]] = SiteAParser._get_insights_dict(soup)
+        data_layer_dict: Optional[Dict[str, Any]] = SiteAParser._get_data_layer_dict(
+            soup
+        )
+
+        offer_id = SiteAParser._get_offer_id(url)
+        offer_date = SiteAParser._get_offer_date(soup, details_dict)
+        offer_type = SiteAParser._get_offer_type(loopa_data_dict)
+        property_type = SiteAParser._get_property_type(url)
+        price = SiteAParser._get_offer_price(soup)
+        total_sqm = SiteAParser._get_total_sqm(insights_dict, details_dict)
+        built_sqm = SiteAParser._get_built_sqm(insights_dict, details_dict)
+        chilean_region_name = SiteAParser._get_chilean_region_name(
+            data_layer_dict, loopa_data_dict
+        )
+        chilean_location_name = SiteAParser._get_chilean_location_name(
+            data_layer_dict, loopa_data_dict
+        )
+        number_of_rooms = SiteAParser._get_number_of_rooms(
+            insights_dict, details_dict, loopa_data_dict
+        )
+        number_of_bathrooms = SiteAParser._get_number_of_bathrooms(
+            insights_dict, details_dict
+        )
+        number_of_parking_spots = SiteAParser._get_number_of_parking_spots(
+            insights_dict, details_dict
+        )
+
+        lat_lon = SiteAParser._get_lat_lon(soup)
+
+        lat, lon = lat_lon if lat_lon else (None, None)
+
+        if offer_id is None or price is None:
+            return None
+
+        return SilverStorageEntry(
+            offer_id=offer_id,
+            offer_date=offer_date,
+            offer_type=offer_type,
+            property_type=property_type,
+            price=price,
+            total_sqm=total_sqm,
+            built_sqm=built_sqm,
+            chilean_region_name=chilean_region_name,
+            chilean_location_name=chilean_location_name,
+            number_of_rooms=number_of_rooms,
+            number_of_bathrooms=number_of_bathrooms,
+            number_of_parking_spots=number_of_parking_spots,
+            latitude=lat,
+            longitude=lon,
+        )
+
+    @staticmethod
+    def _get_offer_id(url: str) -> Optional[int]:
+        return None
+        match = re.search(r"/(\d+)(?:\?|$)", url)
+        return int(match.group(1)) if match else None
+
+    @staticmethod
+    def _get_offer_date(soup, details_dict) -> Optional[str]:
+        pass
+
+    @staticmethod
+    def _get_offer_type(loopa_data: Dict[str, Any]) -> Optional[str]:
+        pass
+
+    @staticmethod
+    def _get_property_type(url: str) -> Optional[str]:
+        pass
+
+    @staticmethod
+    def _get_offer_price(soup) -> Optional[str]:
+        pass
+
+    @staticmethod
+    def _get_total_sqm(insights_dict, details_dict):
+        pass
+
+    @staticmethod
+    def _get_built_sqm(insights_dict, details_dict):
+        pass
+
+    @staticmethod
+    def _get_chilean_region_name(data_layer, loopa_data):
+        pass
+
+    @staticmethod
+    def _get_chilean_location_name(data_layer, loopa_data):
+        pass
+
+    @staticmethod
+    def _get_number_of_rooms(insights_dict, details_dict, loopa_data):
+        pass
+
+    @staticmethod
+    def _get_number_of_bathrooms(insights_dict, details_dict):
+        pass
+
+    @staticmethod
+    def _get_number_of_parking_spots(insights_dict, details_dict):
+        pass
+
+    @staticmethod
+    def _get_lat_lon(soup) -> Optional[Tuple[float, float]]:
+        pass
+
+    # Processing the HTML
+    @staticmethod
+    def _get_loopa_data_dict(soup):
+        pass
+
+    @staticmethod
+    def _get_data_layer_dict(soup):
+        pass
+
+    @staticmethod
+    def _get_insights_dict(soup):
+        pass
+
+    @staticmethod
+    def _get_details_dict(soup):
+        pass
+
+
+class Processor:
+    @staticmethod
+    @singledispatchmethod
+    def convert_entry(self, entry):
+        raise NotImplementedError(
+            f"'convert_entry' not implemented for entry of type {type(entry)}"
+        )
+
+    @staticmethod
+    @convert_entry.register
+    def convert_entry(
+        entry: BronzeStorageEntry,
+        file_content: str,
+        parsers_dict: Dict[str, Parser],
+    ) -> Optional[SilverStorageEntry]:
+        """
+        Takes a BronzeStorageEntry, the file_content as a string, and a parsers_dict = {'source_system': Parser}, and applies the parser that matches the source_system of the entry to generate and return a SilverStorageEntry.
+        """
+
+        right_parser: Optional[Parser] = parsers_dict.get(entry.source_system)
+
+        if right_parser:
+            return right_parser.parse(entry.url, file_content)

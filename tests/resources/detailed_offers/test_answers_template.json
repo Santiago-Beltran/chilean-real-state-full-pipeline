@@ -1,0 +1,21 @@
+{
+    "offer_id": ,
+    "offer_date": , 
+    "offer_type": , 
+
+    "property_type": , 
+
+    "price": ,
+    "total_sqm": ,
+    "built_sqm": ,
+
+    "chilean_region_name": ,
+    "chilean_location_name": ,
+
+    "number_of_rooms": ,
+    "number_of_bathrooms": ,
+    "number_of_parking_spots": ,
+
+    "latitude": ,
+    "longitude": 
+}

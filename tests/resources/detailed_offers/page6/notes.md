@@ -1,0 +1,1 @@
+Here the offer shows "Metro Macul" as a possible location but the test answer doesn't include it since for this MVP I'll extract only from structured fields.

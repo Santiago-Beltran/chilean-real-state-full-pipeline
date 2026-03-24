@@ -1,0 +1,21 @@
+{
+    "offer_id": 29462889,
+    "offer_date": "23/03/2026", 
+    "offer_type": "Venta", 
+
+    "property_type": "Apartamento", 
+
+    "price": "UF6.320,00",
+    "total_sqm": null,
+    "built_sqm": 95,
+
+    "chilean_region_name": "Los Lagos",
+    "chilean_location_name": "Puerto Varas",
+
+    "number_of_rooms": 3,
+    "number_of_bathrooms": 3,
+    "number_of_parking_spots": 1,
+
+    "latitude": null,
+    "longitude": null
+}

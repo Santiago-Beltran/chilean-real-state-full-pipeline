@@ -1,0 +1,21 @@
+{
+    "offer_id": 32184347,
+    "offer_date": "23/03/2026", 
+    "offer_type": "Venta", 
+
+    "property_type": "Apartamento", 
+
+    "price": "UF12.300,00",
+    "total_sqm": 170,
+    "built_sqm": 170,
+
+    "chilean_region_name": "Región Metropolitana",
+    "chilean_location_name": "Las Condes",
+
+    "number_of_rooms": 3,
+    "number_of_bathrooms": 3,
+    "number_of_parking_spots": 2,
+
+    "latitude": -33.402777000000000,
+    "longitude": -70.568475000000000
+}

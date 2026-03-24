@@ -58,17 +58,15 @@ class SilverStorageEntry(BaseModel):
     property_type: Optional[str]
 
     price: str
-    sqm: Optional[float]
+    total_sqm: Optional[float]
     built_sqm: Optional[float]
 
-    region_name: Optional[str]
-    location_name: Optional[str]
+    chilean_region_name: Optional[str]
+    chilean_location_name: Optional[str]
 
     number_of_rooms: Optional[int]
     number_of_bathrooms: Optional[int]
     number_of_parking_spots: Optional[int]
-
-    description: Optional[str]
 
     latitude: Optional[float]
     longitude: Optional[float]

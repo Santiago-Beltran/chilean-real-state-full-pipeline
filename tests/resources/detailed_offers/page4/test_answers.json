@@ -1,0 +1,21 @@
+{
+    "offer_id": 25823871,
+    "offer_date": "24/04/2024", 
+    "offer_type": "Venta", 
+
+    "property_type": "Casa", 
+
+    "price": "$50.000.000",
+    "total_sqm": null,
+    "built_sqm": null,
+
+    "chilean_region_name": "Biobío",
+    "chilean_location_name": "Los Ángeles",
+
+    "number_of_rooms": 3,
+    "number_of_bathrooms": 1,
+    "number_of_parking_spots": null,
+
+    "latitude": null,
+    "longitude": null 
+}

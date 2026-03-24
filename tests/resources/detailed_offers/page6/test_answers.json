@@ -1,0 +1,21 @@
+{
+    "offer_id": 32184332,
+    "offer_date": "23/03/2026", 
+    "offer_type": "Venta", 
+
+    "property_type": "Apartamento", 
+
+    "price": "$100.000.000",
+    "total_sqm": 47,
+    "built_sqm": null,
+
+    "chilean_region_name": "Región Metropolitana",
+    "chilean_location_name": null,
+
+    "number_of_rooms": 2,
+    "number_of_bathrooms": 2,
+    "number_of_parking_spots": 1,
+
+    "latitude": -33.507344100000000,
+    "longitude": -70.590642100000000 
+}

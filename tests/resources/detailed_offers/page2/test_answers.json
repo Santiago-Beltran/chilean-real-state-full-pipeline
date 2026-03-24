@@ -1,0 +1,21 @@
+{
+    "offer_id": 32184187,
+    "offer_date": "23/03/2026", 
+    "offer_type": "Venta", 
+
+    "property_type": "Apartamento", 
+
+    "price": "UF2.000,00",
+    "total_sqm": 44,
+    "built_sqm": 42,
+
+    "chilean_region_name": "Región Metropolitana",
+    "chilean_location_name": "San Miguel",
+
+    "number_of_rooms": 2,
+    "number_of_bathrooms": 1,
+    "number_of_parking_spots": null,
+
+    "latitude": -33.479281600000000,
+    "longitude": -70.648980400000000  
+}

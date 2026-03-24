@@ -1,0 +1,21 @@
+{
+    "offer_id": 32184279,
+    "offer_date": "23/03/2026", 
+    "offer_type": "Venta", 
+
+    "property_type": "Casa", 
+
+    "price": "UF5.500,00",
+    "total_sqm": 5250,
+    "built_sqm": 173,
+
+    "chilean_region_name": "Valparaiso",
+    "chilean_location_name": "Algarrobo",
+
+    "number_of_rooms": 3,
+    "number_of_bathrooms": 2,
+    "number_of_parking_spots": 4,
+
+    "latitude": -33.408321600000000,
+    "longitude": -71.650175600000000 
+}
