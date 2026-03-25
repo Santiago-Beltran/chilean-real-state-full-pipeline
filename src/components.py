@@ -277,7 +277,7 @@ class SiteAParser(Parser):
         pass
 
     @staticmethod
-    def _get_lat_lon(soup) -> Optional[Tuple[float, float]]:
+    def _get_lat_lon(soup) -> Tuple[float, float]:
         pass
 
     # Processing the HTML
