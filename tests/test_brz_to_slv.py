@@ -12,6 +12,7 @@ from src.components import SiteAParser
 
 from bs4 import BeautifulSoup
 
+
 BASE_DIR = Path(__file__).parent
 RESOURCES = BASE_DIR / "resources"
 
@@ -21,6 +22,7 @@ class siteAPageWithAnswers:
     url: str
     content: str
     expected_silver_entry: SilverStorageEntry
+    page_test_number: int
 
 
 def create_siteA_pages_with_answers() -> List[siteAPageWithAnswers]:
@@ -40,6 +42,10 @@ def create_siteA_pages_with_answers() -> List[siteAPageWithAnswers]:
             continue
 
         if os.path.isdir(folder_path):
+            page_test_number = int(
+                item.replace("page", "")
+            )  # will throw error if a folder called page has no number next to it (like pagen instead of page15)
+
             with open(folder_path / "page_content.html") as c:
                 content = c.read()
 
@@ -52,14 +58,16 @@ def create_siteA_pages_with_answers() -> List[siteAPageWithAnswers]:
             expected_silver_entry = SilverStorageEntry(**data)
 
             created_list.append(
-                siteAPageWithAnswers(url, content, expected_silver_entry)
+                siteAPageWithAnswers(
+                    url, content, expected_silver_entry, page_test_number
+                )
             )
 
     return created_list
 
 
 def custom_test_id(page_data: siteAPageWithAnswers):
-    return page_data.url
+    return f"Test Page # {page_data.page_test_number}"
 
 
 PAGE_TEST_CASES = create_siteA_pages_with_answers()
@@ -79,7 +87,7 @@ def test_siteA_get_offer_date(page_data: siteAPageWithAnswers):
     details_dict = SiteAParser._get_details_dict(soup)
 
     assert (
-        SiteAParser._get_offer_date(soup, details_dict)
+        SiteAParser._get_offer_date(details_dict)
         == page_data.expected_silver_entry.offer_date
     )
 
@@ -97,9 +105,11 @@ def test_siteA_get_offer_type(page_data: siteAPageWithAnswers):
 
 @pytest.mark.parametrize("page_data", PAGE_TEST_CASES, ids=custom_test_id)
 def test_siteA_get_property_type(page_data: siteAPageWithAnswers):
+    soup = BeautifulSoup(page_data.content, 'html.parser')
+    loopa_data_dict = SiteAParser._get_loopa_data_dict(soup)
 
     assert (
-        SiteAParser._get_property_type(page_data.url)
+        SiteAParser._get_property_type(loopa_data_dict)
         == page_data.expected_silver_entry.property_type
     )
 
@@ -109,7 +119,9 @@ def test_siteA_get_property_listed_price(page_data: siteAPageWithAnswers):
 
     soup = BeautifulSoup(page_data.content, "html.parser")
 
-    assert SiteAParser._get_offer_price(soup) == page_data.expected_silver_entry.price
+    insights_dict = SiteAParser._get_insights_dict(soup)
+
+    assert SiteAParser._get_offer_price(soup, insights_dict) == page_data.expected_silver_entry.price
 
 
 @pytest.mark.parametrize("page_data", PAGE_TEST_CASES, ids=custom_test_id)
@@ -117,7 +129,9 @@ def test_siteA_get_total_sqm(page_data: siteAPageWithAnswers):
 
     soup = BeautifulSoup(page_data.content, "html.parser")
 
-    insights_dict = SiteAParser._get_insights_dict(soup) # I dislike relying on the implementation of these functions that aren't being tested in the test. Perhaps this could be some internal component of the tested functions, this has some cons such as re-computing the same insights_dict on each method. 
+    insights_dict = SiteAParser._get_insights_dict(
+        soup
+    )  # I dislike relying on the implementation of these functions that aren't being tested in the test. Perhaps this could be some internal component of the tested functions, this has some cons such as re-computing the same insights_dict on each method.
     details_dict = SiteAParser._get_details_dict(soup)
 
     assert (

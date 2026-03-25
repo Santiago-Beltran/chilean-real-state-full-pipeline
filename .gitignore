@@ -222,3 +222,4 @@ tests/resources/test_deltalake
 
 data/
 
+tests/scratchpad.py

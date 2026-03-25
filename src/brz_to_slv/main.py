@@ -47,7 +47,7 @@ num_partitions = (
 )
 
 df_repart = df.repartition(num_partitions)
-
+processor = Processor()
 
 def process_bronze_batch(pdf: Iterable[pd.DataFrame]) -> Iterable[pd.DataFrame]:
     for df in pdf:
@@ -63,14 +63,14 @@ def process_bronze_batch(pdf: Iterable[pd.DataFrame]) -> Iterable[pd.DataFrame]:
             with open(f"{BRONZE_DELTALAKE_LOCATION}/{bronze_row.file_path}", "r") as f:
                 content: str = f.read()
 
-            silver_entry: Optional[SilverStorageEntry] = Processor.convert_entry(
+            silver_entry: Optional[SilverStorageEntry] = processor.convert_entry(
                 entry=bronze_row,
                 file_content=content,
                 parsers_dict={"SiteA": SiteAParser},
             )
 
             if silver_entry:
-                new_rows.append(silver_entry)
+                new_rows.append(silver_entry.model_dump())
 
         yield pd.DataFrame(new_rows)
 
@@ -81,12 +81,12 @@ silver_schema_ddl = """
     offer_type STRING,
     property_type STRING,
     price STRING,
-    sqm DOUBLE,
+    total_sqm DOUBLE,
     built_sqm DOUBLE,
-    region_name STRING,
-    location_name STRING,
+    chilean_region_name STRING,
+    chilean_location_name STRING,
     number_of_rooms INT,
-    number_of_bathrooms INT,
+    number_of_bathrooms FLOAT,
     number_of_parking_spots INT,
     latitude DOUBLE,
     longitude DOUBLE

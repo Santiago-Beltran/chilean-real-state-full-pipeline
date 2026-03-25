@@ -1,4 +1,6 @@
 from bs4 import BeautifulSoup
+from urllib.parse import urlparse, parse_qs
+
 from abc import abstractmethod
 from deltalake import write_deltalake, DeltaTable
 import asyncio
@@ -14,6 +16,8 @@ from src.models import RawScrapedPage, BronzeStorageEntry, SilverStorageEntry
 
 import os
 import re
+import json
+import html
 
 
 class StoreConfig:
@@ -166,6 +170,21 @@ class Parser:
 
 
 class SiteAParser(Parser):
+    REGIONS_WITH_ACCENTS: Dict[str, str] = {
+        "Region Metropolitana": "Región Metropolitana",
+        "Arica Paranicota": "Arica & Paranicota",
+        "Tarapaca": "Tarapacá",
+        "Valparaiso": "Valparaíso",
+        "Ohiggins": "O'Higgins",
+        "Nuble": "Ñuble",
+        "Biobio": "Biobío",
+        "Araucania": "Araucanía",
+        "Los Rios": "Los Ríos",
+        "Magallanes Antartica": "Magallanes & Antártica",
+    }
+
+    PROPERTY_TYPE_MAP: Dict[str, str] = {"Apartments": "Apartamento", "Houses": "Casa"}
+
     @staticmethod
     def parse(content: str, url: str) -> Optional[SilverStorageEntry]:
         soup = BeautifulSoup(content, "html.parser")
@@ -180,10 +199,10 @@ class SiteAParser(Parser):
         )
 
         offer_id = SiteAParser._get_offer_id(url)
-        offer_date = SiteAParser._get_offer_date(soup, details_dict)
+        offer_date = SiteAParser._get_offer_date(details_dict)
         offer_type = SiteAParser._get_offer_type(loopa_data_dict)
-        property_type = SiteAParser._get_property_type(url)
-        price = SiteAParser._get_offer_price(soup)
+        property_type = SiteAParser._get_property_type(loopa_data_dict)
+        price = SiteAParser._get_offer_price(soup, insights_dict)
         total_sqm = SiteAParser._get_total_sqm(insights_dict, details_dict)
         built_sqm = SiteAParser._get_built_sqm(insights_dict, details_dict)
         chilean_region_name = SiteAParser._get_chilean_region_name(
@@ -228,87 +247,250 @@ class SiteAParser(Parser):
 
     @staticmethod
     def _get_offer_id(url: str) -> Optional[int]:
-        return None
         match = re.search(r"/(\d+)(?:\?|$)", url)
         return int(match.group(1)) if match else None
 
     @staticmethod
-    def _get_offer_date(soup, details_dict) -> Optional[str]:
-        pass
+    def _get_offer_date(details_dict: Dict[str, str]) -> Optional[str]:
+        details_date = details_dict.get("Publicado")
+
+        if details_date:
+            return details_date
 
     @staticmethod
     def _get_offer_type(loopa_data: Dict[str, Any]) -> Optional[str]:
-        pass
+        offer_type = loopa_data.get("SaleType")
+
+        if offer_type == "SALE":
+            return "Venta"
 
     @staticmethod
-    def _get_property_type(url: str) -> Optional[str]:
-        pass
+    def _get_property_type(loopa_data: Dict[str, str]) -> Optional[str]:
+        system_housing_type = loopa_data.get("HousingType")
+
+        if system_housing_type:
+            property_type = SiteAParser.PROPERTY_TYPE_MAP.get(system_housing_type)
+            return property_type
+
+        return None
 
     @staticmethod
-    def _get_offer_price(soup) -> Optional[str]:
-        pass
+    def _get_offer_price(soup, insights_dict: Dict[str, str]) -> Optional[str]:
+        raw_price = insights_dict.get("Precio")
+        if not raw_price:
+            return None
+
+        match = re.search(r"(?:UF|\$)\d{1,3}(?:\.\d{3})*(?:,\d{2})?", raw_price)
+        if match:
+            return match.group(0)
+
+        return None
 
     @staticmethod
-    def _get_total_sqm(insights_dict, details_dict):
-        pass
+    def _get_total_sqm(
+        insights_dict: Dict[str, str], details_dict: Dict[str, str]
+    ) -> Optional[float]:
+        total_sqm = details_dict.get("M² totales")
+
+        if total_sqm:
+            try:
+                return float(total_sqm)
+            except ValueError:
+                pass
+
+        return None
 
     @staticmethod
-    def _get_built_sqm(insights_dict, details_dict):
-        pass
+    def _get_built_sqm(
+        insights_dict: Dict[str, str], details_dict: Dict[str, str]
+    ) -> Optional[float]:
+        built_sqm = insights_dict.get("Área construida (m²)")
+
+        if built_sqm:
+            return float(built_sqm)
+        else:
+            return None
 
     @staticmethod
-    def _get_chilean_region_name(data_layer, loopa_data):
-        pass
+    def _get_chilean_region_name(
+        data_layer: Dict[str, str], loopa_data: Dict[str, str]
+    ):
+        region = data_layer.get("province")
+
+        if not region:
+            return None
+
+        match = re.search(r"^chile-es-(.+)$", region)
+        if match:
+            formatted = match.group(1).replace("-", " ").title()
+
+            with_accents = SiteAParser.REGIONS_WITH_ACCENTS.get(formatted)
+
+            if with_accents:
+                return with_accents
+
+            else:
+                return formatted
+
+        return None
 
     @staticmethod
-    def _get_chilean_location_name(data_layer, loopa_data):
-        pass
+    def _get_chilean_location_name(
+        data_layer: Dict[str, str], loopa_data: Dict[str, str]
+    ) -> Optional[str]:
+        # If province and location are not duplicated on data_layer, then loopa_data's region must be the 'location'. (Quirks of the source)
+        province = data_layer.get("province")
+        location = data_layer.get("location")
+
+        if province == location:
+            return None
+
+        else:
+            return loopa_data.get("Region")
 
     @staticmethod
-    def _get_number_of_rooms(insights_dict, details_dict, loopa_data):
-        pass
+    def _get_number_of_rooms(
+        insights_dict: Dict[str, str],
+        details_dict: Dict[str, str],
+        loopa_data: Dict[str, str],
+    ):
+        insights_rooms = insights_dict.get("Dormitorios")
+
+        if insights_rooms:
+            try:
+                return int(insights_rooms)
+            except ValueError:
+                pass
+
+        else:
+            return None
 
     @staticmethod
-    def _get_number_of_bathrooms(insights_dict, details_dict):
-        pass
+    def _get_number_of_bathrooms(
+        insights_dict: Dict[str, str], details_dict: Dict[str, str]
+    ) -> Optional[float]:
+        insights_bathrooms = insights_dict.get("Baños")
+
+        if insights_bathrooms:
+            try:
+                return float(insights_bathrooms)
+            except ValueError:
+                pass
+
+        else:
+            return None
 
     @staticmethod
-    def _get_number_of_parking_spots(insights_dict, details_dict):
-        pass
+    def _get_number_of_parking_spots(
+        insights_dict: Dict[str, str], details_dict: Dict[str, str]
+    ) -> Optional[int]:
+        insights_parking_spots = insights_dict.get("Estacionamientos")
+
+        if insights_parking_spots:
+            try:
+                return int(insights_parking_spots)
+            except ValueError:
+                return None
+
+        else:
+            return None
 
     @staticmethod
-    def _get_lat_lon(soup) -> Tuple[float, float]:
-        pass
+    def _get_lat_lon(soup) -> Tuple[Optional[float], Optional[float]]:
+        iframe = soup.select_one("section.d3-property__map iframe")
+
+        if iframe and iframe.has_attr("src"):
+            src_url = html.unescape(iframe["src"])
+            query = parse_qs(urlparse(src_url).query)
+            if "q" in query:
+                coords = query["q"][0].split(",")
+                if len(coords) == 2:
+                    try:
+                        lat, lng = float(coords[0]), float(coords[1])
+                        return lat, lng
+                    except ValueError:
+                        pass
+
+        return None, None
 
     # Processing the HTML
     @staticmethod
-    def _get_loopa_data_dict(soup):
-        pass
+    def _get_loopa_data_dict(soup) -> Dict[str, str]:
+        script = soup.find(string=re.compile(r"loopaData"))
+        data = {}
+
+        if script:
+            match = re.search(
+                r"var\s+loopaData\s*=\s*({.*?});", script.string, re.DOTALL
+            )
+            if match:
+                json_str = match.group(1)
+                data = json.loads(json_str)
+
+        return data
 
     @staticmethod
-    def _get_data_layer_dict(soup):
-        pass
+    def _get_data_layer_dict(soup) -> Dict[str, str]:
+
+        data = {}
+
+        script = soup.find(string=re.compile(r"dataLayer\.push"))
+
+        if script:
+            match = re.search(
+                r"dataLayer\.push\(\s*({.*?})\s*\);", script.string, re.DOTALL
+            )
+            if match:
+                json_str = match.group(1)
+                data = json.loads(json_str)
+
+        return data
 
     @staticmethod
-    def _get_insights_dict(soup):
-        pass
+    def _get_insights_dict(soup) -> Dict[str, str]:
+        insights = soup.select(".d3-property-insight__attribute-details")
+
+        result = {}
+
+        for insight in insights:
+            key = insight.select_one(".d3-property-insight__attribute-title")
+            value = insight.select_one(".d3-property-insight__attribute-value")
+
+            if not key or not value:
+                continue
+
+            key = key.getText()
+            value = value.getText()
+
+            result[key] = value
+
+        return result
 
     @staticmethod
-    def _get_details_dict(soup):
-        pass
+    def _get_details_dict(soup) -> Dict[str, str]:
+        data = {}
+
+        for item in soup.select(".d3-property-details__detail-label"):
+            label = item.contents[0].get_text(strip=True)
+
+            value_tag = item.select_one(".d3-property-details__detail")
+            value = value_tag.get_text(strip=True) if value_tag else ""
+
+            data[label] = value
+
+        return data
 
 
 class Processor:
-    @staticmethod
     @singledispatchmethod
     def convert_entry(self, entry):
         raise NotImplementedError(
             f"'convert_entry' not implemented for entry of type {type(entry)}"
         )
 
-    @staticmethod
     @convert_entry.register
     def convert_entry(
+        self,
         entry: BronzeStorageEntry,
         file_content: str,
         parsers_dict: Dict[str, Parser],
@@ -320,4 +502,4 @@ class Processor:
         right_parser: Optional[Parser] = parsers_dict.get(entry.source_system)
 
         if right_parser:
-            return right_parser.parse(entry.url, file_content)
+            return right_parser.parse(file_content, entry.url)

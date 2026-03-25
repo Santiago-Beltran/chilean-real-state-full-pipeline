@@ -65,7 +65,7 @@ class SilverStorageEntry(BaseModel):
     chilean_location_name: Optional[str]
 
     number_of_rooms: Optional[int]
-    number_of_bathrooms: Optional[int]
+    number_of_bathrooms: Optional[float]
     number_of_parking_spots: Optional[int]
 
     latitude: Optional[float]
