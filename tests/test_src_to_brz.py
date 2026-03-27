@@ -1,4 +1,3 @@
-from src.models import RawScrapedPage
 import pytest_asyncio
 import pytest
 from unittest.mock import AsyncMock, MagicMock
@@ -15,10 +14,12 @@ from deltalake import DeltaTable
 import scrapy
 from scrapy import responsetypes
 
-from src import components, models
-from src.src_to_brz import src_to_brz
-from src.src_to_brz.src_to_brz import BronzeWriterPipeline
+from chilean_real_state_offer_extraction_pipeline.models import RawScrapedPage
+from chilean_real_state_offer_extraction_pipeline import components, models
 
+from chilean_real_state_offer_extraction_pipeline.src_to_brz import (
+    main as src_to_brz_main,
+)
 from pathlib import Path
 
 import shutil
@@ -31,13 +32,15 @@ load_dotenv()
 BASE_DIR = Path(__file__).parent
 RESOURCES = BASE_DIR / "resources"
 
-# Both folders will be deleted as per _clean_test_store_folders. 
+# Both folders will be deleted as per _clean_test_store_folders.
 TEST_DELTALAKE_BRONZE = Path(RESOURCES / "test_deltalake/bronze")
 TEST_DELTALAKE_SILVER = Path(RESOURCES / "test_deltalake/silver")
 
 
 @pytest_asyncio.fixture
-async def main_page_response() -> AsyncGenerator[aiohttp.ClientResponse]: # Live requests are unstable and unsuitable for testing. I should instead create a monitoring service that checks whether the scraper works or not.
+async def main_page_response() -> (
+    AsyncGenerator[aiohttp.ClientResponse]
+):  # Live requests are unstable and unsuitable for testing. I should instead create a monitoring service that checks whether the scraper works or not.
     async with aiohttp.ClientSession() as session:
         async with session.get(os.getenv("SITEA_START_URL", "Example.com")) as response:
             response.raise_for_status()
@@ -81,7 +84,7 @@ async def test_select_all_offers_on_page(main_page_response: aiohttp.ClientRespo
 
     response: scrapy.http.Response = respcls(url=test_url, body=content)
 
-    test_spider = src_to_brz.SiteASpider("test_spider")
+    test_spider = src_to_brz_main.SiteASpider("test_spider")
 
     offer_links: List[str] = test_spider._get_offer_links(response)
 
@@ -112,12 +115,15 @@ async def test_brz_check_if_file_exists(
 
     assert await store.check_if_entry_exists(raw_scraped_page)
 
+
 @pytest.mark.asyncio
 async def test_too_many_open_files(
-        raw_scraped_page: models.RawScrapedPage, store: components.Store
-        ):
+    raw_scraped_page: models.RawScrapedPage, store: components.Store
+):
 
-    many_files: List[RawScrapedPage] = [raw_scraped_page.model_copy() for _ in range(500)]
+    many_files: List[RawScrapedPage] = [
+        raw_scraped_page.model_copy() for _ in range(500)
+    ]
 
     await store.write_batch_of_entries(many_files)
 
@@ -126,17 +132,18 @@ async def test_too_many_open_files(
 
 @pytest.mark.asyncio
 async def test_pipeline_race_condition_fix():
-    pipeline = BronzeWriterPipeline()
+    pipeline = src_to_brz_main.BronzeWriterPipeline()
     pipeline.max_pages_in_memory = 10
-    pipeline.pages_in_memory = []  
-    
+    pipeline.pages_in_memory = []
+
     pipeline.store = MagicMock()
     pipeline.store.check_if_entry_exists = AsyncMock(return_value=False)
-    
+
     write_mock = AsyncMock()
+
     async def slow_write(*args, **kwargs):
         await asyncio.sleep(0.1)
-    
+
     write_mock.side_effect = slow_write
     pipeline.store.write_batch_of_entries = write_mock
 
@@ -147,16 +154,18 @@ async def test_pipeline_race_condition_fix():
                 url=f"https://example.com/{i}",
                 source_system="SiteA",
                 ingestion_ts=datetime.now(),
-                raw_content=b"<html>test</html>"
+                raw_content=b"<html>test</html>",
             )
         )
 
     tasks = [pipeline.process_item(item) for item in items]
     await asyncio.gather(*tasks)
 
-    assert pipeline.store.write_batch_of_entries.call_count == 1, "Write was called multiple times."
-    
+    assert pipeline.store.write_batch_of_entries.call_count == 1, (
+        "Write was called multiple times."
+    )
+
     written_batch = pipeline.store.write_batch_of_entries.call_args[0][0]
     assert len(written_batch) == 10
-    
+
     assert len(pipeline.pages_in_memory) == 0

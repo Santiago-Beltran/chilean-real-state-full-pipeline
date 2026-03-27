@@ -1,13 +1,13 @@
 from pathlib import Path
-from typing import List, Iterator, AsyncGenerator
+from typing import List, Iterator, AsyncGenerator, Optional
 import scrapy
 
 import os
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from src.models import RawScrapedPage
-from src.components import Store, StoreConfig
+from chilean_real_state_offer_extraction_pipeline.models import RawScrapedPage
+from chilean_real_state_offer_extraction_pipeline.components import Store, StoreConfig
 
 from scrapy.crawler import AsyncCrawlerProcess
 from scrapy.exceptions import DropItem
@@ -105,11 +105,11 @@ class BronzeWriterPipeline:
             batch_to_write = self.pages_in_memory
             self.pages_in_memory = []
             await self.store.write_batch_of_entries(batch_to_write)
-            
+
         return item
 
 
-def run():
+def run_process() -> Optional[str]:
     custom_settings = {
         "ITEM_PIPELINES": {
             "src.src_to_brz.src_to_brz.BronzeWriterPipeline": 100,
@@ -142,7 +142,3 @@ def run():
     process = AsyncCrawlerProcess(settings=custom_settings)
     process.crawl(SiteASpider)
     process.start()  # Blocked until crawling is finished...
-
-
-if __name__ == "__main__":
-    run()

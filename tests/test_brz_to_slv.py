@@ -1,5 +1,7 @@
+from chilean_real_state_offer_extraction_pipeline.models import SilverStorageEntry
+from chilean_real_state_offer_extraction_pipeline.components import SiteAParser
+
 from typing import List
-from src.models import SilverStorageEntry
 import pytest
 
 from pathlib import Path
@@ -7,9 +9,6 @@ import os
 
 import json
 from dataclasses import dataclass
-
-from src.components import SiteAParser
-
 from bs4 import BeautifulSoup
 
 

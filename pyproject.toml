@@ -1,7 +1,7 @@
 [project]
-name = "chile-full-pipeline"
+name = "chilean_real_state_offer_extraction_pipeline"
 version = "0.1.0"
-description = "Add your description here"
+description = "Pipeline that ingests offers from chilean real state portals as .html on a bronze layer adding some metadata for each file on a delta lake table, and then parses the offers iterating through this table using PySpark and BeautifulSoup to create entries on another delta lake following the concept of a silver layer in a Medallion Architecture. Each row is an offer and contains price, total_sqm, built_sqm, and other relevant information."
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
@@ -12,6 +12,7 @@ dependencies = [
     "deltalake>=1.5.0",
     "dotenv>=0.9.9",
     "pandas>=3.0.1",
+    "prefect>=3.6.23",
     "pyarrow>=23.0.1",
     "pydantic>=2.12.5",
     "pyspark>=4.1.1",
@@ -20,3 +21,11 @@ dependencies = [
     "requests>=2.32.5",
     "scrapy>=2.14.2",
 ]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"

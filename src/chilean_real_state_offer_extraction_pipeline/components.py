@@ -12,7 +12,7 @@ from functools import singledispatchmethod
 import pandas as pd
 import pyarrow as pa
 
-from src.models import RawScrapedPage, BronzeStorageEntry, SilverStorageEntry
+from chilean_real_state_offer_extraction_pipeline.models import RawScrapedPage, BronzeStorageEntry, SilverStorageEntry
 
 import os
 import re
