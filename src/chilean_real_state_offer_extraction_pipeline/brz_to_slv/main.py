@@ -14,8 +14,14 @@ from delta import configure_spark_with_delta_pip
 from pyspark.sql import SparkSession
 from dotenv import load_dotenv
 
-from chilean_real_state_offer_extraction_pipeline.models import BronzeStorageEntry, SilverStorageEntry
-from chilean_real_state_offer_extraction_pipeline.components import Processor, SiteAParser
+from chilean_real_state_offer_extraction_pipeline.models import (
+    BronzeStorageEntry,
+    SilverStorageEntry,
+)
+from chilean_real_state_offer_extraction_pipeline.components import (
+    Processor,
+    SiteAParser,
+)
 
 load_dotenv()
 
@@ -109,5 +115,6 @@ def run_process() -> Optional[str]:
         logger.info("Bronze metadata is empty. No files processed.")
 
     return "SUCCESS"
+
 
 run_process()

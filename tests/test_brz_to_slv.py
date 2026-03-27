@@ -104,7 +104,7 @@ def test_siteA_get_offer_type(page_data: siteAPageWithAnswers):
 
 @pytest.mark.parametrize("page_data", PAGE_TEST_CASES, ids=custom_test_id)
 def test_siteA_get_property_type(page_data: siteAPageWithAnswers):
-    soup = BeautifulSoup(page_data.content, 'html.parser')
+    soup = BeautifulSoup(page_data.content, "html.parser")
     loopa_data_dict = SiteAParser._get_loopa_data_dict(soup)
 
     assert (
@@ -120,7 +120,10 @@ def test_siteA_get_property_listed_price(page_data: siteAPageWithAnswers):
 
     insights_dict = SiteAParser._get_insights_dict(soup)
 
-    assert SiteAParser._get_offer_price(soup, insights_dict) == page_data.expected_silver_entry.price
+    assert (
+        SiteAParser._get_offer_price(soup, insights_dict)
+        == page_data.expected_silver_entry.price
+    )
 
 
 @pytest.mark.parametrize("page_data", PAGE_TEST_CASES, ids=custom_test_id)
